@@ -1,0 +1,29 @@
+{
+    "posts":[
+ {
+    "id":"4b4b",
+    "title":"AI 1",
+    "description":"simple static exmple",
+    "author":"gaurav",
+    "image":"https://avatars.mds.yandex.net/i?id=f6a2cbc716928af0a7b6250be30b638d1b7b5270-5858200-images-thumbs&n=13",
+    "createdAt":"2026-02-12T10:41:07.837Z"
+ },
+
+ {
+    "id":"4b4b",
+    "title":"AI 2",
+    "description":"simple static exmple",
+    "author":"gaurav",
+    "image":"https://img.freepik.com/premium-photo/digital-data-mining-machine-learning-technology-design-computer-brain_31965-11728.jpg?semt=ais_hybrid&w=740",
+    "createdAt":"2026-02-12T10:41:07.837Z"
+ },
+
+ {
+    "id":"4b4b",
+    "title":"AI 3",
+    "description":"simple static exmple",
+    "image":"https://avatars.mds.yandex.net/i?id=fd87cebd2a4cd906dc09af150f2336a0786945eb-12995656-images-thumbs&n=13" ,
+     "createdAt":"2026-02-12T10:41:07.837Z"
+ }
+]
+}

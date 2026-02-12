@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa"; // Import eye icons
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import "./Login.css";
 
 const Login = () => {
@@ -60,16 +61,17 @@ const Login = () => {
       ) {
         localStorage.setItem("loginData", JSON.stringify(loginData));
         navigate("/Dashboard");
-        alert("Login successfully...!");
+        toast.success("Login successfully");
       } else {
-        alert("invalid email or password");
+        toast.error("invalid email or password");
       }
     }
   };
 
   return (
     <div className="form-container">
-      <h1 className="form-title">LOGIN</h1>
+     <h1 className="form-title">WELCOME BACK</h1>
+      <h5>Sign in to your account</h5>
 
       <form onSubmit={handleSubmit}>
         {/* Email */}
