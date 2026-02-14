@@ -11,6 +11,16 @@ const Dashboard = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const handleCreatePostClick = (e) => {
+    e.preventDefault();
+    navigate("/create-post");
+  };
+
+  // FIXED: Corrected function syntax - removed extra comma and invalid onClick
+  const handleEditPost = (post) => {
+    navigate(`/edit-post/${post.id}`);
+  };
+
   // Fetch all posts from db.json
   const fetchPosts = async () => {
     try {
@@ -52,13 +62,32 @@ const Dashboard = () => {
 
   // Get current user from localStorage
   const loginData = JSON.parse(localStorage.getItem("loginData") || "{}");
-  const currentUser = loginData?.email?.split("@")[0] || "User";
+  const authData = JSON.parse(localStorage.getItem("authData") || "{}");
+  
+  // Get username from multiple possible sources
+  let currentUser = "";
+  
+  if (authData?.username) {
+    currentUser = authData.username;
+  } else if (loginData?.email) {
+    currentUser = loginData.email.split("@")[0];
+  } else if (loginData?.username) {
+    currentUser = loginData.username;
+  }
 
   // Calculate stats
   const totalPosts = posts.length;
-  const userPosts = posts.filter(
-    (post) => post.author?.toLowerCase() === currentUser.toLowerCase()
-  ).length;
+  
+  const userPosts = posts.filter((post) => {
+    if (!currentUser) return false;
+    
+    const postAuthor = (post.author || "").toLowerCase().trim();
+    const currentUserLower = currentUser.toLowerCase().trim();
+    
+    // Check if post author matches current user
+    return postAuthor === currentUserLower;
+  }).length;
+  
   const communityPosts = totalPosts - userPosts;
 
   return (
@@ -68,7 +97,7 @@ const Dashboard = () => {
       <main className="dashboard-main">
         <div className="dashboard-welcome">
           <div className="welcome-text">
-            <h1>Welcome to Your Dashboard.</h1>
+            <h1>Welcome to Your Dashboard!</h1>
             <p>
               Manage your posts, track engagement, and connect with your
               audience.
@@ -96,7 +125,10 @@ const Dashboard = () => {
         <section className="posts-section">
           <div className="section-header">
             <h2 className="section-title">Recent Feed</h2>
-            <button className="create-shortcut-btn">
+            <button
+              className="create-shortcut-btn"
+              onClick={handleCreatePostClick}
+            >
               <FaPlus /> New Post
             </button>
           </div>
@@ -109,7 +141,7 @@ const Dashboard = () => {
                 <div className="post-card" key={post.id}>
                   <div className="post-image-container">
                     <img
-                      src={post.image || "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=500"}
+                      src={post.image}
                       alt={post.title}
                       className="post-card-image"
                     />
@@ -118,6 +150,7 @@ const Dashboard = () => {
                       <button
                         className="action-btn edit-btn"
                         title="Edit Post"
+                        onClick={() => handleEditPost(post)}
                       >
                         <MdEdit size={22} color="#ffffff" />
                       </button>
@@ -134,9 +167,14 @@ const Dashboard = () => {
 
                   <div className="post-card-content">
                     <div className="post-meta">
-                      <span className="post-author">By {post.author || "Anonymous"}</span>
+                      <span className="post-author">
+                        By {post.author || "Anonymous"}
+                      </span>
                       <span className="post-date">
-                        {post.date || new Date(post.createdAt || Date.now()).toLocaleDateString()}
+                        {post.date ||
+                          new Date(
+                            post.createdAt || Date.now(),
+                          ).toLocaleDateString()}
                       </span>
                     </div>
 
