@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FaEye, FaEyeSlash } from "react-icons/fa"; // Import eye icons
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import "./Register.css";
@@ -15,6 +15,7 @@ const Register = () => {
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const validate = () => {
@@ -74,33 +75,81 @@ const Register = () => {
   };
 
   const checkIfUserExists = (email) => {
-    const existingUsers = JSON.parse(localStorage.getItem("authData")) || [];
-    return existingUsers.some((user) => user.email === email);
+    try {
+      const authDataStr = localStorage.getItem("authData");
+      let existingUsers = [];
+      
+      if (authDataStr) {
+        const parsed = JSON.parse(authDataStr);
+        // Handle different possible formats
+        if (Array.isArray(parsed)) {
+          existingUsers = parsed;
+        } else if (parsed && typeof parsed === 'object') {
+          // If it's a single object, wrap in array
+          existingUsers = [parsed];
+        }
+      }
+      
+      return existingUsers.some((user) => user?.email === email);
+    } catch (error) {
+      console.error("Error checking if user exists:", error);
+      return false;
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
     if (validate()) {
-      // Check if user already exists
-      if (checkIfUserExists(formData.email)) {
-        toast.error("User with this email already exists!");
-        return;
+      setLoading(true);
+      
+      try {
+        // Check if user already exists
+        if (checkIfUserExists(formData.email)) {
+          toast.error("User with this email already exists!");
+          setLoading(false);
+          return;
+        }
+
+        // Get existing users with proper error handling
+        const authDataStr = localStorage.getItem("authData");
+        let existingUsers = [];
+        
+        if (authDataStr) {
+          try {
+            const parsed = JSON.parse(authDataStr);
+            if (Array.isArray(parsed)) {
+              existingUsers = parsed;
+            } else if (parsed && typeof parsed === 'object') {
+              existingUsers = [parsed];
+            }
+          } catch (e) {
+            console.error("Error parsing authData:", e);
+            existingUsers = [];
+          }
+        }
+
+        // Remove confirmPassword from user data
+        const { confirmPassword, ...userData } = formData;
+
+        // Add new user to the array
+        const updatedUsers = [...existingUsers, userData];
+
+        // Save updated users array to localStorage
+        localStorage.setItem("authData", JSON.stringify(updatedUsers));
+
+        // Debug: Log what was saved
+        console.log("User registered successfully:", userData.email);
+        console.log("Total users now:", updatedUsers.length);
+
+        toast.success("Registration successful! Please login.");
+        navigate("/Login");
+      } catch (error) {
+        console.error("Registration error:", error);
+        toast.error("Registration failed. Please try again.");
+      } finally {
+        setLoading(false);
       }
-
-      // Get existing users or initialize empty array
-      const existingUsers = JSON.parse(localStorage.getItem("authData")) || [];
-
-      // Remove confirmPassword from user data
-      const { confirmPassword, ...userData } = formData;
-
-      // Add new user to the array
-      const updatedUsers = [...existingUsers, userData];
-
-      // Save updated users array to localStorage
-      localStorage.setItem("authData", JSON.stringify(updatedUsers));
-
-      toast.success("Registration successfully...!");
-      navigate("/Login");
     }
   };
 
@@ -108,6 +157,7 @@ const Register = () => {
     <div className="form-container">
       <h1 className="form-title">CREATE ACCOUNT</h1>
       <h5>Join us and start journey</h5>
+      
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="username">Fullname</label>
@@ -118,6 +168,7 @@ const Register = () => {
             value={formData.username}
             placeholder="Enter your username"
             onChange={handleInputChange}
+            disabled={loading}
           />
           {errors.username && (
             <span className="error-msg">{errors.username}</span>
@@ -133,6 +184,7 @@ const Register = () => {
             value={formData.email}
             placeholder="Enter your email"
             onChange={handleInputChange}
+            disabled={loading}
           />
           {errors.email && <span className="error-msg">{errors.email}</span>}
         </div>
@@ -146,6 +198,7 @@ const Register = () => {
             value={formData.phone}
             placeholder="Enter your phone number"
             onChange={handleInputChange}
+            disabled={loading}
           />
           {errors.phone && <span className="error-msg">{errors.phone}</span>}
         </div>
@@ -162,6 +215,7 @@ const Register = () => {
               placeholder="Enter your password"
               onChange={handleInputChange}
               style={{ paddingRight: "40px" }}
+              disabled={loading}
             />
             <span
               onClick={togglePasswordVisibility}
@@ -173,6 +227,7 @@ const Register = () => {
                 cursor: "pointer",
                 fontSize: "18px",
                 color: "#666",
+                zIndex: 1,
               }}
             >
               {showPassword ? <FaEyeSlash /> : <FaEye />}
@@ -195,6 +250,7 @@ const Register = () => {
               placeholder="Confirm your password"
               onChange={handleInputChange}
               style={{ paddingRight: "40px" }}
+              disabled={loading}
             />
             <span
               onClick={toggleConfirmPasswordVisibility}
@@ -206,6 +262,7 @@ const Register = () => {
                 cursor: "pointer",
                 fontSize: "18px",
                 color: "#666",
+                zIndex: 1,
               }}
             >
               {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
@@ -216,8 +273,12 @@ const Register = () => {
           )}
         </div>
 
-        <button type="submit" className="btn-primary">
-          Register
+        <button 
+          type="submit" 
+          className="btn-primary"
+          disabled={loading}
+        >
+          {loading ? "Registering..." : "Register"}
         </button>
       </form>
 

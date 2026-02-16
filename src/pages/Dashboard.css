@@ -292,10 +292,10 @@
 
 @media (max-width: 640px) {
   .dashboard-main {
-    padding: 2rem 1 rem;
+    padding: 2rem 1rem;
   }
-
-  .dashboard-welcome h1 {
+  
+  .dashboard-welcome {
     font-size: 1.75rem;
   }
 }

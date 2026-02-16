@@ -10,6 +10,7 @@ import CreatePost from "./pages/CreatePost";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
+import PostDetails from "./pages/PostDetails.jsx";
 
 const DefaultRoute = () => {
   const loginData = JSON.parse(localStorage.getItem("loginData"));
@@ -65,6 +66,15 @@ function App() {
         </AuthGuard>
       ),
     },
+    {
+      path: "/post/:id",
+      element: (
+        <AuthGuard required={true}>
+          <PostDetails />
+        </AuthGuard>
+      ),
+    },
+    
   ]);
 
   return (

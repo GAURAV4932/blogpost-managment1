@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FaEye, FaEyeSlash } from "react-icons/fa"; // Import eye icons
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import "./Login.css";
@@ -11,8 +11,9 @@ const Login = () => {
     password: "",
   });
 
-  const [showPassword, setShowPassword] = useState(false); // State for password visibility
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const handleInputChange = (e) => {
     setLoginData({
@@ -53,23 +54,57 @@ const Login = () => {
     e.preventDefault();
 
     if (validate()) {
-      // Get all users from localStorage
-      const users = JSON.parse(localStorage.getItem("authData")) || [];
+      setLoading(true);
+      
+      try {
+        // Get auth data with proper error handling
+        const authDataStr = localStorage.getItem("authData");
+        let users = [];
+        
+        if (authDataStr) {
+          try {
+            const parsed = JSON.parse(authDataStr);
+            // Handle different possible formats
+            if (Array.isArray(parsed)) {
+              users = parsed;
+            } else if (parsed && typeof parsed === 'object') {
+              // If it's a single object, wrap in array
+              users = [parsed];
+            }
+          } catch (e) {
+            console.error("Error parsing authData:", e);
+            users = [];
+          }
+        }
 
-      // Find user with matching email and password
-      const authenticatedUser = users.find(
-        (user) =>
-          user.email === loginData.email &&
-          user.password === loginData.password,
-      );
+        // Debug: Log what we have
+        console.log("Users from localStorage:", users);
+        console.log("Login attempt with:", loginData);
 
-      if (authenticatedUser) {
-        // Store current login session data
-        localStorage.setItem("loginData", JSON.stringify(loginData));
-        toast.success("Login successfully");
-        navigate("/Dashboard");
-      } else {
-        toast.error("Invalid email or password");
+        // Find user with matching email and password
+        const authenticatedUser = users.find(
+          (user) =>
+            user?.email === loginData.email &&
+            user?.password === loginData.password,
+        );
+
+        if (authenticatedUser) {
+          // Store current login session data
+          localStorage.setItem("loginData", JSON.stringify({
+            email: loginData.email,
+            username: authenticatedUser.username || loginData.email.split("@")[0]
+          }));
+          
+          toast.success("Login successful!");
+          navigate("/dashboard"); // Note: lowercase d to match your route
+        } else {
+          toast.error("Invalid email or password");
+        }
+      } catch (error) {
+        console.error("Login error:", error);
+        toast.error("An error occurred during login");
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -90,6 +125,7 @@ const Login = () => {
             value={loginData.email}
             placeholder="Enter your email"
             onChange={handleInputChange}
+            disabled={loading}
           />
           {errors.email && <span className="error">{errors.email}</span>}
         </div>
@@ -106,6 +142,7 @@ const Login = () => {
               placeholder="Enter your password"
               onChange={handleInputChange}
               style={{ paddingRight: "40px" }}
+              disabled={loading}
             />
             <span
               onClick={togglePasswordVisibility}
@@ -125,13 +162,17 @@ const Login = () => {
           {errors.password && <span className="error">{errors.password}</span>}
         </div>
 
-        <button type="submit" className="btn-primary">
-          Login
+        <button 
+          type="submit" 
+          className="btn-primary"
+          disabled={loading}
+        >
+          {loading ? "Logging in..." : "Login"}
         </button>
       </form>
 
       <p className="link-text">
-        Don't have an account? <a href="/Register">Register here</a>
+        Don't have an account? <a href="/register">Register here</a>
       </p>
     </div>
   );
