@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   Bar,
   BarChart,
@@ -12,73 +14,92 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
+import { FaEdit, FaTrash } from "react-icons/fa";
 import Navbar from "../components/Navbar";
 import "./Analytics.css";
 
 const Analytics = () => {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const postsPerPage = 3;
+  const postsPerPage = 5;
 
-  // Fetch posts from db.json
-  useEffect(() => {
-    const fetchPosts = async () => {
+  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#FF6B6B", "#6B66FF"];
+
+  const handleLogout = () => {
+    localStorage.removeItem("loginData");
+    navigate("/login");
+  };
+
+  const handleEdit = (id) => {
+    navigate(`/edit-post/${id}`);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this post?")) {
       try {
-        const response = await fetch("http://localhost:3000/posts");
-        const data = await response.json();
-        if (Array.isArray(data)) {
-          setPosts(data);
+        const response = await fetch(`http://localhost:3000/posts/${id}`, {
+          method: "DELETE",
+        });
+        
+        if (response.ok) {
+          setPosts(posts.filter(post => post.id !== id));
+          // Update chart data after deletion
+          processChartData(posts.filter(post => post.id !== id));
+          toast.success("Post deleted successfully");
+        } else {
+          toast.error("Failed to delete post");
         }
       } catch (error) {
-        console.error("Error fetching posts:", error);
-      } finally {
-        setLoading(false);
+        console.error("Error deleting post:", error);
+        toast.error("Error deleting post");
       }
-    };
+    }
+  };
 
+  useEffect(() => {
     fetchPosts();
   }, []);
 
-  // Prepare chart data from fetched posts
-  const getChartData = () => {
-    const authorCount = {};
-    posts.forEach((post) => {
-      const author = post.author || "Unknown";
-      authorCount[author] = (authorCount[author] || 0) + 1;
-    });
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("http://localhost:3000/posts");
+      if (response.ok) {
+        const data = await response.json();
+        setPosts(data);
+        processChartData(data);
+      } else {
+        toast.error("Failed to fetch posts");
+      }
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      toast.error("Error loading posts");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return Object.keys(authorCount).map((author) => ({
+  const processChartData = (postsData) => {
+    // Calculate author statistics
+    const authorStats = postsData.reduce((acc, post) => {
+      const author = post.author || 'Unknown';
+      acc[author] = (acc[author] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Convert to array format for charts
+    const chartDataArray = Object.keys(authorStats).map(author => ({
       name: author,
-      posts: authorCount[author],
+      posts: authorStats[author]
     }));
+
+    setChartData(chartDataArray);
   };
 
-  const chartData = getChartData();
-  const header = ["ID", "Title", "Author", "Date"];
-  const COLORS = [
-    "#0088FE",
-    "#00C49F",
-    "#FFBB28",
-    "#FF8042",
-    "#8884d8",
-    "#82ca9d",
-  ];
-
-  // Format date to DD/MM/YYYY
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
-
-  // Pagination logic
+  // Pagination calculations
   const indexOfLastPost = currentPage * postsPerPage;
   const indexOfFirstPost = indexOfLastPost - postsPerPage;
   const currentPosts = posts.slice(indexOfFirstPost, indexOfLastPost);
@@ -100,19 +121,9 @@ const Analytics = () => {
     }
   };
 
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    if (totalPages <= 0) return [];
-    const pageNumbers = [];
-    for (let i = 1; i <= totalPages; i++) {
-      pageNumbers.push(i);
-    }
-    return pageNumbers;
-  };
-
   return (
     <div className="analytics-page">
-      <Navbar />
+      <Navbar onLogout={handleLogout} />
       <main className="analytics-main">
         <header className="analytics-header">
           <h1>Blog Analytics</h1>
@@ -120,85 +131,112 @@ const Analytics = () => {
         </header>
 
         {loading ? (
-          <div className="loading-spinner">Loading analytics...</div>
+          <div className="loading">Loading analytics data...</div>
         ) : (
           <>
             <div className="charts-container">
               <div className="chart-card">
                 <h3>Posts per Author</h3>
                 <div className="chart-wrapper">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar
-                        dataKey="posts"
-                        fill="#8884d8"
-                        name="Number of Posts"
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {chartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="posts" fill="#8884d8" name="Number of Posts" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="no-data">No data available</p>
+                  )}
                 </div>
               </div>
 
-              {/* Pie chart */}
               <div className="chart-card">
-                <h3>Distribution by Author</h3>
+                <h3>Distribution</h3>
                 <div className="chart-wrapper">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={chartData}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="posts"
-                        nameKey="name"
-                        label
-                      >
-                        {chartData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {chartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={chartData}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="posts"
+                          nameKey="name"
+                          label={({ name, percent }) => 
+                            `${name}: ${(percent * 100).toFixed(0)}%`
+                          }
+                        >
+                          {chartData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="no-data">No data available</p>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Dynamic table from db.json */}
             <div className="posts-table-section">
               <h3>All Posts</h3>
               <div className="table-wrapper">
                 <table className="analytics-table">
                   <thead>
                     <tr>
-                      {header.map((headerItem, index) => (
-                        <th key={index}>{headerItem}</th>
-                      ))}
+                      <th>ID</th>
+                      <th>Title</th>
+                      <th>Author</th>
+                      <th>Date</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {currentPosts.length > 0 ? (
                       currentPosts.map((post) => (
                         <tr key={post.id}>
-                          <td>{post.id.substring(0, 4)}</td>
+                          <td>{post.id}</td>
                           <td>{post.title}</td>
-                          <td>{post.author || "Anonymous"}</td>
-                          <td>{formatDate(post.date || post.createdAt)}</td>
+                          <td>{post.author}</td>
+                          <td>
+                            {post.date ||
+                              new Date(post.createdAt || Date.now()).toLocaleDateString(
+                                "en-GB",
+                              )}
+                          </td>
+                          <td className="action-buttons">
+                            <button
+                              className="edit-btn"
+                              onClick={() => handleEdit(post.id)}
+                              title="Edit"
+                            >
+                            ✏️
+                            </button>
+                            <button
+                              className="delete-btn"
+                              onClick={() => handleDelete(post.id)}
+                              title="Delete"
+                            >
+                            🗑️
+                            </button>
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="4" className="no-data">
+                        <td colSpan="5" className="no-data">
                           No posts available
                         </td>
                       </tr>
@@ -207,39 +245,34 @@ const Analytics = () => {
                 </table>
               </div>
 
-              {/* Dynamic pagination */}
-              {posts.length > 0 && (
+              {posts.length > postsPerPage && (
                 <div className="pagination">
                   <button
-                    className={`page-btn ${currentPage === 1 ? "disabled" : ""}`}
                     onClick={handlePrevious}
                     disabled={currentPage === 1}
+                    className="page-btn"
                   >
                     Previous
                   </button>
 
-                  {getPageNumbers().map((number) => (
+                  {[...Array(totalPages)].map((_, index) => (
                     <button
-                      key={number}
-                      className={`page-btn ${currentPage === number ? "active" : ""}`}
-                      onClick={() => handlePageChange(number)}
+                      key={index + 1}
+                      onClick={() => handlePageChange(index + 1)}
+                      className={`page-btn ${currentPage === index + 1 ? "active" : ""}`}
                     >
-                      {number}
+                      {index + 1}
                     </button>
                   ))}
 
                   <button
-                    className={`page-btn ${currentPage === totalPages ? "disabled" : ""}`}
                     onClick={handleNext}
                     disabled={currentPage === totalPages}
+                    className="page-btn"
                   >
                     Next
                   </button>
                 </div>
-              )}
-
-              {posts.length === 0 && (
-                <div className="pagination-placeholder"></div>
               )}
             </div>
           </>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FaPlus } from "react-icons/fa";
+import { FaPlus, FaStar } from "react-icons/fa";
 import { MdDelete, MdEdit } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -10,6 +10,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [favorites, setFavorites] = useState([]); // Added missing favorites state
 
   const handleCreatePostClick = () => {
     navigate("/create-post");
@@ -62,16 +63,48 @@ const Dashboard = () => {
     }
   };
 
-  const loginData = JSON.parse(localStorage.getItem("loginData") || "{}");
-  const authData = JSON.parse(localStorage.getItem("authData") || "[]");
+  const handleToggleFavorite = (postId) => {
+    setFavorites(prev => {
+      if (prev.includes(postId)) {
+        return prev.filter(id => id !== postId);
+      } else {
+        return [...prev, postId];
+      }
+    });
+  };
+
+  // Fixed: Safely parse localStorage data
+  const loginData = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("loginData") || "{}");
+    } catch {
+      return {};
+    }
+  })();
+
+  const authData = (() => {
+    try {
+      const data = localStorage.getItem("authData");
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  })();
 
   let currentUser = "";
 
   if (loginData?.email) {
-    const foundUser = authData.find((user) => user.email === loginData.email);
-    currentUser = foundUser?.username || loginData.email.split("@")[0];
+    // Fixed: Check if authData is an array before using find
+    if (Array.isArray(authData)) {
+      const foundUser = authData.find((user) => user.email === loginData.email);
+      currentUser = foundUser?.username || loginData.email.split("@")[0];
+    } else {
+      // If authData is not an array, use email username as fallback
+      currentUser = loginData.email.split("@")[0];
+    }
   }
 
+  // Fixed: Safely filter posts
   const totalPosts = posts.length;
   const userPosts = posts.filter((post) => {
     if (!currentUser) return false;
@@ -134,6 +167,12 @@ const Dashboard = () => {
                       alt={post.title}
                       className="post-card-image"
                     />
+                    <button 
+                      className={`favorite-btn ${favorites.includes(post.id) ? 'active' : ''}`}
+                      onClick={() => handleToggleFavorite(post.id)}
+                    >
+                      <FaStar size={20} color={favorites.includes(post.id) ? "#FFD700" : "#ffffff"} />
+                    </button>
                     <div className="post-actions">
                       <button
                         className="action-btn edit-btn"
